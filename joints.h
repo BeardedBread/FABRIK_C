@@ -13,6 +13,7 @@ typedef struct _Body {
     unsigned int N;
     float* links_lengths;
     float total_length;
+    float angle_limit;
     Joint* root;
     Joint* end;
 } Body;

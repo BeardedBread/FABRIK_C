@@ -13,6 +13,7 @@ Body* init_body(unsigned int N, int total_length, float root_x, float root_y){
     body->total_length = link_len * (N - 1);
     body->target = (Vector2){root_x, body->total_length};
     body->final_target = (Vector2){root_x, body->total_length};
+    body->angle_limit = PI;
 
     body->root_pos = (Vector2){root_x, root_y};
     body->root = (Joint *)malloc(sizeof(Joint));
@@ -55,6 +56,24 @@ Vector2 _get_new_pos(Vector2 p1, Vector2 p2, float length){
     );
 }
 
+Vector2 _limit_new_pos(Vector2 a, Vector2 b, Vector2 c, float length, float angle){
+    Vector2 d_hat = Vector2Normalize(Vector2Subtract(c, b));
+    Vector2 e_hat = Vector2Normalize(Vector2Subtract(b, a));
+    Vector2 f_hat = (Vector2){-e_hat.y, e_hat.x};
+   
+    if (Vector2DotProduct(d_hat, e_hat) > cos(angle)){
+        return _get_new_pos(c, b, length);
+    }
+
+    float lambda = length * cos(angle); 
+    float mu = length * sin(angle); 
+    if (Vector2DotProduct(d_hat, f_hat) < 0)
+        mu *= -1;
+
+    Vector2 v = Vector2Add(Vector2Scale(e_hat, lambda), Vector2Scale(f_hat, mu));
+    return Vector2Add(b, Vector2Scale(v, length / Vector2Length(v)));
+}
+
 void update_body(Body *body){
     body->target = Vector2Lerp(body->target, body->final_target, 0.2);
 
@@ -78,7 +97,13 @@ void update_body(Body *body){
         body->end->pos = body->target;
         i = body->N - 2;
         for (Joint *jt = body->end->parent; jt != NULL; jt = jt->parent){
-            jt->pos = _get_new_pos(jt->pos, jt->child->pos, body->links_lengths[i]);
+            // Do regular calc for the one after the end
+            if (jt->child->child == NULL){
+                jt->pos = _get_new_pos(jt->pos, jt->child->pos, body->links_lengths[i]);
+            }
+            else {
+                jt->pos = _limit_new_pos(jt->child->child->pos, jt->child->pos, jt->pos, body->links_lengths[i], body->angle_limit);
+            }
             --i;
         }
     
@@ -87,7 +112,12 @@ void update_body(Body *body){
         body->root->pos.y = body->root_pos.y;
         i = 0;
         for (Joint *jt = body->root->child; jt != NULL; jt = jt->child){
-            jt->pos = _get_new_pos(jt->pos, jt->parent->pos, body->links_lengths[i]);
+            if (jt->parent->parent == NULL){
+                jt->pos = _get_new_pos(jt->pos, jt->parent->pos, body->links_lengths[i]);
+            }
+            else {
+                jt->pos = _limit_new_pos(jt->parent->parent->pos, jt->parent->pos, jt->pos, body->links_lengths[i], body->angle_limit);
+            }
             ++i;
         }
         error = Vector2Distance(prev_pos, body->end->pos);
