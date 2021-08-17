@@ -81,8 +81,12 @@ void update_body(Body *body){
     // Check distance
     float dist = Vector2Distance(body->joints[0].pos, body->target);
     if (dist >= body->total_length){
-        for(unsigned int i = 1; i< body->N; ++i){
-            body->joints[i].pos = _get_new_pos(body->target, body->joints[i-1].pos, body->links_lengths[i]);
+        for(int i = 0; i< body->N-1; ++i){
+            body->joints[i+1].pos = _get_new_pos(
+                body->target,
+                body->joints[i].pos,
+                body->links_lengths[i]
+            );
         }
        return;
     }
@@ -132,9 +136,9 @@ void update_body(Body *body){
 
 void draw_body(Body* body){
     DrawCircleV(body->joints[0].pos, 5, BLACK);
-    DrawLineV(body->joints[0].pos, body->joints[1].pos, BLACK);
+    DrawLineEx(body->joints[0].pos, body->joints[1].pos, body->N, BLACK);
     for(int i = 1; i < body->N-1; ++i){
-        DrawLineV(body->joints[i].pos, body->joints[i+1].pos, BLACK);
+        DrawLineEx(body->joints[i].pos, body->joints[i+1].pos, body->N - i, BLACK);
 #ifdef DEBUG
         DrawCircleV(body->joints[i].pos, 5, BLUE);
 #endif
