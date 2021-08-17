@@ -11,9 +11,10 @@ Body* init_body(unsigned int N, int total_length, float root_x, float root_y){
     body->links_lengths = (float *)calloc(N - 1, sizeof(float));
     float link_len = total_length * 1.0f / ((N - 1)*1.0f);
     body->total_length = link_len * (N - 1);
+    body->current_length = link_len * (N - 1);
     body->target = (Vector2){root_x, body->total_length};
     body->final_target = (Vector2){root_x, body->total_length};
-    body->angle_limit = PI;
+    body->angle_limit = PI/6;
 
     body->root_pos = (Vector2){root_x, root_y};
     body->root = (Joint *)malloc(sizeof(Joint));
@@ -43,8 +44,19 @@ Body* init_body(unsigned int N, int total_length, float root_x, float root_y){
     return body;
 }
 
+void set_body_root(Body* body, Vector2 new_pos){
+    Vector2 offset = Vector2Subtract(new_pos, body->root_pos);
+    set_body_target(body, Vector2Add(body->final_target, offset));
+
+    body->root_pos = new_pos;
+}
+
 void set_body_target(Body* body, Vector2 new_target){
     body->final_target = new_target;
+}
+
+void set_current_length(Body* body, float new_length){
+
 }
 
 Vector2 _get_new_pos(Vector2 p1, Vector2 p2, float length){
@@ -71,7 +83,7 @@ Vector2 _limit_new_pos(Vector2 a, Vector2 b, Vector2 c, float length, float angl
         mu *= -1;
 
     Vector2 v = Vector2Add(Vector2Scale(e_hat, lambda), Vector2Scale(f_hat, mu));
-    return Vector2Add(b, Vector2Scale(v, length / Vector2Length(v)));
+    return Vector2Add(b, v);
 }
 
 void update_body(Body *body){
@@ -80,7 +92,7 @@ void update_body(Body *body){
     // Check distance
     float dist = Vector2Distance(body->root->pos, body->target);
     unsigned int i = 0;
-    if (dist > body->total_length){
+    if (dist >= body->total_length){
         for (Joint *jt=body->root->child;jt != NULL; jt= jt->child){
             jt->pos = _get_new_pos(body->target, jt->parent->pos, body->links_lengths[i]);
             ++i;
@@ -128,10 +140,12 @@ void draw_body(Body* body){
     for (Joint* jt = body->root; jt != NULL; jt = jt->child){
         if (jt->child != NULL)
             DrawLineV(jt->pos, jt->child->pos, BLACK);
-        if (jt != body->root)
-            DrawCircleV(jt->pos, 5, BLUE);
-        else
+        if (jt == body->root)
             DrawCircleV(jt->pos, 5, BLACK);
+#ifdef DEBUG
+        else
+            DrawCircleV(jt->pos, 5, BLUE);
+#endif
     }
     DrawCircleV(body->target, 3, RED); 
 }
