@@ -2,14 +2,15 @@
 #include "raymath.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 Body* init_body(unsigned int N, int total_length, float root_x, float root_y){
     Body *body = (Body *)malloc(sizeof(Body));
     body->N = N;
     body->total_length = 0;
 
-    body->links_lengths = (float *)calloc(N - 1, sizeof(float));
     float link_len = total_length * 1.0f / ((N - 1)*1.0f);
+    body->links_lengths = (float *)calloc(N - 1, sizeof(float));
     body->total_length = link_len * (N - 1);
     body->current_length = link_len * (N - 1);
     body->target = (Vector2){root_x, body->total_length};
@@ -17,28 +18,17 @@ Body* init_body(unsigned int N, int total_length, float root_x, float root_y){
     body->angle_limit = PI/6;
 
     body->root_pos = (Vector2){root_x, root_y};
-    body->root = (Joint *)malloc(sizeof(Joint));
-    body->root->pos = (Vector2){root_x, root_y};
-    body->root->parent = NULL;
 
-    Joint* prev_joint = body->root;
+    body->joints = (Joint *)calloc(N, sizeof(Joint));
+    body->joints[0].pos = body->root_pos;
     for (int i = 1; i<N;++i){
         body->links_lengths[i-1] = link_len;
-        Joint* new_joint = (Joint *)malloc(sizeof(Joint));
-        new_joint->pos = (Vector2){root_x, root_y - link_len * i};
-        new_joint->parent = prev_joint;
-        new_joint->child = NULL;
-        prev_joint->child = new_joint; 
-        prev_joint = new_joint;
-        if (i == N-1){
-            body->end = new_joint;
-        }
+        body->joints[i].pos = (Vector2){root_x, root_y - link_len * i};
     }
 
 #ifdef DEBUG
-    Joint* current_joint = body->root;
-    for (Joint* jt = body->root;jt != NULL; jt = jt->child){
-        printf("x %.2f, y %.2f\n", jt->pos.x, jt->pos.y);
+    for (int i = 0; i<N;++i){
+        printf("x %.2f, y %.2f\n", body->joints[i].pos.x, body->joints[i].pos.y);
     }
 #endif
     return body;
@@ -46,9 +36,8 @@ Body* init_body(unsigned int N, int total_length, float root_x, float root_y){
 
 void set_body_root(Body* body, Vector2 new_pos){
     Vector2 offset = Vector2Subtract(new_pos, body->root_pos);
-    set_body_target(body, Vector2Add(body->final_target, offset));
-
     body->root_pos = new_pos;
+    set_body_target(body, Vector2Add(body->final_target, offset));
 }
 
 void set_body_target(Body* body, Vector2 new_target){
@@ -90,12 +79,10 @@ void update_body(Body *body){
     body->target = Vector2Lerp(body->target, body->final_target, 0.2);
 
     // Check distance
-    float dist = Vector2Distance(body->root->pos, body->target);
-    unsigned int i = 0;
+    float dist = Vector2Distance(body->joints[0].pos, body->target);
     if (dist >= body->total_length){
-        for (Joint *jt=body->root->child;jt != NULL; jt= jt->child){
-            jt->pos = _get_new_pos(body->target, jt->parent->pos, body->links_lengths[i]);
-            ++i;
+        for(unsigned int i = 1; i< body->N; ++i){
+            body->joints[i].pos = _get_new_pos(body->target, body->joints[i-1].pos, body->links_lengths[i]);
         }
        return;
     }
@@ -103,61 +90,59 @@ void update_body(Body *body){
     double error = 1;
     Vector2 prev_pos; 
     while (error > 1e-2){
-        prev_pos = body->end->pos;
+        prev_pos = body->joints[body->N-1].pos;
 
         // Backward Pass
-        body->end->pos = body->target;
-        i = body->N - 2;
-        for (Joint *jt = body->end->parent; jt != NULL; jt = jt->parent){
+        body->joints[body->N-1].pos = body->target;
+        body->joints[body->N-2].pos = _get_new_pos(
+            body->joints[body->N-2].pos,
+            body->joints[body->N-1].pos,
+            body->links_lengths[body->N-2]
+        );
+        for(int i = body->N - 3; i >= 0; --i){
             // Do regular calc for the one after the end
-            if (jt->child->child == NULL){
-                jt->pos = _get_new_pos(jt->pos, jt->child->pos, body->links_lengths[i]);
-            }
-            else {
-                jt->pos = _limit_new_pos(jt->child->child->pos, jt->child->pos, jt->pos, body->links_lengths[i], body->angle_limit);
-            }
-            --i;
+            body->joints[i].pos = _limit_new_pos(
+                body->joints[i+2].pos,
+                body->joints[i+1].pos,
+                body->joints[i].pos,
+                body->links_lengths[i],
+                body->angle_limit
+            );
         }
     
         // Forward Pass
-        body->root->pos.x = body->root_pos.x;
-        body->root->pos.y = body->root_pos.y;
-        i = 0;
-        for (Joint *jt = body->root->child; jt != NULL; jt = jt->child){
-            if (jt->parent->parent == NULL){
-                jt->pos = _get_new_pos(jt->pos, jt->parent->pos, body->links_lengths[i]);
-            }
-            else {
-                jt->pos = _limit_new_pos(jt->parent->parent->pos, jt->parent->pos, jt->pos, body->links_lengths[i], body->angle_limit);
-            }
-            ++i;
+        body->joints[0].pos = body->root_pos;
+        body->joints[1].pos = _get_new_pos(
+            body->joints[1].pos,
+            body->joints[0].pos,
+            body->links_lengths[1]
+        );
+        for(int i = 2; i < body->N; ++i){
+            body->joints[i].pos = _limit_new_pos(
+                body->joints[i-2].pos,
+                body->joints[i-1].pos,
+                body->joints[i].pos,
+                body->links_lengths[i-1],
+                body->angle_limit
+            );
         }
-        error = Vector2Distance(prev_pos, body->end->pos);
+        error = Vector2Distance(prev_pos, body->joints[body->N-1].pos);
     }
 }
 
 void draw_body(Body* body){
-    for (Joint* jt = body->root; jt != NULL; jt = jt->child){
-        if (jt->child != NULL)
-            DrawLineV(jt->pos, jt->child->pos, BLACK);
-        if (jt == body->root)
-            DrawCircleV(jt->pos, 5, BLACK);
+    DrawCircleV(body->joints[0].pos, 5, BLACK);
+    DrawLineV(body->joints[0].pos, body->joints[1].pos, BLACK);
+    for(int i = 1; i < body->N-1; ++i){
+        DrawLineV(body->joints[i].pos, body->joints[i+1].pos, BLACK);
 #ifdef DEBUG
-        else
-            DrawCircleV(jt->pos, 5, BLUE);
+        DrawCircleV(body->joints[i].pos, 5, BLUE);
 #endif
     }
     DrawCircleV(body->target, 3, RED); 
 }
 
 void free_body(Body *body){
-    Joint* current_joint  = body->root;
-    Joint* next_joint = body->root;
-    while (current_joint != NULL){
-        current_joint->parent = NULL;
-        next_joint = current_joint->child;
-        current_joint->child = NULL;
-        free(current_joint);
-        current_joint = next_joint;
-    }
+    free(body->joints);
+    free(body->links_lengths);
 }

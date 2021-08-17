@@ -2,8 +2,6 @@
 
 typedef struct _Joint {
     Vector2 pos;
-    struct _Joint* parent;
-    struct _Joint* child;
 } Joint;
 
 typedef struct _Body {
@@ -15,8 +13,7 @@ typedef struct _Body {
     float total_length;
     float current_length;
     float angle_limit;
-    Joint* root;
-    Joint* end;
+    Joint* joints;
 } Body;
 
 
