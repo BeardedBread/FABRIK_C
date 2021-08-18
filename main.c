@@ -8,10 +8,14 @@ int main(int argc, char** argv) {
     InitWindow(scrnWidth, scrnHeight, "FABRIK");
     SetTargetFPS(30);
 
-    Body* body = init_body(15, 300, 400, 500);
+    Body* body = init_body(15, 20, 400, 500);
     bool follow_mode = false;
 
     while(!WindowShouldClose()){
+        if (IsKeyReleased(KEY_O))
+            set_current_length(body, body->current_length - 10);
+        if (IsKeyReleased(KEY_P))
+            set_current_length(body, body->current_length + 10);
         if (IsKeyReleased(KEY_F))
             follow_mode = !follow_mode;
 

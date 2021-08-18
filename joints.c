@@ -4,15 +4,15 @@
 #include <stdio.h>
 #include <string.h>
 
-Body* init_body(unsigned int N, int total_length, float root_x, float root_y){
+Body* init_body(int N, float link_length, float root_x, float root_y){
     Body *body = (Body *)malloc(sizeof(Body));
     body->N = N;
     body->total_length = 0;
 
-    float link_len = total_length * 1.0f / ((N - 1)*1.0f);
+    body->link_length = link_length;
     body->links_lengths = (float *)calloc(N - 1, sizeof(float));
-    body->total_length = link_len * (N - 1);
-    body->current_length = link_len * (N - 1);
+    body->total_length = link_length * (N - 1);
+    body->current_length = link_length * (N - 1);
     body->target = (Vector2){root_x, body->total_length};
     body->final_target = (Vector2){root_x, body->total_length};
     body->angle_limit = PI/6;
@@ -22,8 +22,8 @@ Body* init_body(unsigned int N, int total_length, float root_x, float root_y){
     body->joints = (Joint *)calloc(N, sizeof(Joint));
     body->joints[0].pos = body->root_pos;
     for (int i = 1; i<N;++i){
-        body->links_lengths[i-1] = link_len;
-        body->joints[i].pos = (Vector2){root_x, root_y - link_len * i};
+        body->links_lengths[i-1] = link_length;
+        body->joints[i].pos = (Vector2){root_x, root_y - link_length * i};
     }
 
 #ifdef DEBUG
@@ -45,11 +45,26 @@ void set_body_target(Body* body, Vector2 new_target){
 }
 
 void set_current_length(Body* body, float new_length){
+    body->current_length = Clamp(new_length, 0, body->total_length);
+    body->N = (int)(body->current_length / body->link_length);
 
+    for (int i=0; i< body->N; ++i)
+        body->links_lengths[i] = body->link_length;
+
+    float remainder = body->current_length - body->N * body->link_length;
+    if (remainder >= 1) {
+        body->links_lengths[body->N] = remainder;
+        body->N += 1;
+    }
+    body->N += 1;
 }
 
 Vector2 _get_new_pos(Vector2 p1, Vector2 p2, float length){
     float dist = Vector2Distance(p1, p2);
+    // Ensure it's not zero. Due to integer math, this is possible
+    // Just set it to 1 and let it settle
+    dist = (dist == 0) ? 1 : dist; 
+
     float lambda = length / dist;
     return Vector2Add(
         Vector2Scale(p2,1-lambda),
@@ -80,7 +95,7 @@ void update_body(Body *body){
 
     // Check distance
     float dist = Vector2Distance(body->joints[0].pos, body->target);
-    if (dist >= body->total_length){
+    if (dist >= body->current_length){
         for(int i = 0; i< body->N-1; ++i){
             body->joints[i+1].pos = _get_new_pos(
                 body->target,

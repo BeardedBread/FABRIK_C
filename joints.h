@@ -6,21 +6,22 @@ typedef struct _Joint {
 
 typedef struct _Body {
     Vector2 final_target;
+    int N;
+    float total_length;
+    float angle_limit;
     Vector2 target;
     Vector2 root_pos;
-    unsigned int N;
+    float link_length;
     float* links_lengths;
-    float total_length;
     float current_length;
-    float angle_limit;
     Joint* joints;
 } Body;
 
 
-Body* init_body(unsigned int N, int total_length, float root_x, float root_y);
+Body* init_body(int N, float link_length, float root_x, float root_y);
 void set_body_root(Body* body, Vector2 new_pos);
 void set_body_target(Body* body, Vector2 new_target);
-void set_link_length(Body* body, unsigned int idx, double length);
+void set_current_length(Body* body, float new_length);
 void update_body(Body* body);
 void draw_body(Body* body);
 void free_body(Body* body);
