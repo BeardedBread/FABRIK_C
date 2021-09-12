@@ -15,7 +15,7 @@ Body* init_body(int N, float link_length, float root_x, float root_y){
     body->current_length = link_length * (N - 1);
     body->target = (Vector2){root_x, body->total_length};
     body->final_target = (Vector2){root_x, body->total_length};
-    body->angle_limit = PI/6;
+    body->angle_limit = PI;
 
     body->root_pos = (Vector2){root_x, root_y};
 
@@ -106,9 +106,12 @@ void update_body(Body *body){
        return;
     }
 
+    // Perform FABRIK
     double error = 1;
+    int iterations = 0;
     Vector2 prev_pos; 
-    while (error > 1e-2){
+    while (error > 1e-2 && iterations < 100){
+        ++iterations;
         prev_pos = body->joints[body->N-1].pos;
 
         // Backward Pass
@@ -156,9 +159,13 @@ void draw_body(Body* body){
         DrawLineEx(body->joints[i].pos, body->joints[i+1].pos, body->N - i, BLACK);
 #ifdef DEBUG
         DrawCircleV(body->joints[i].pos, 5, BLUE);
+#else
+        DrawCircleV(body->joints[i].pos,(int)((body->N - i) / 2), BLACK);
 #endif
     }
+#ifdef DEBUG
     DrawCircleV(body->target, 3, RED); 
+#endif
 }
 
 void free_body(Body *body){

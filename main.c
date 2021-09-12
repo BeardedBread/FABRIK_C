@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
 
         update_body(body);
         BeginDrawing();
-            ClearBackground(RAYWHITE);
+            ClearBackground(GREEN);
             draw_body(body);
         EndDrawing();
     }
