@@ -4,7 +4,7 @@ BUILD_DIR = build/
 OBJ = $(patsubst %.c,$(BUILD_DIR)%.o,$(SRC_FILES))
 DEP = $(OBJ:.o=.d)
 
-RAYLIB_DIR = $(HOME)/Documents/Coding/raylib/build/
+RAYLIB_DIR ?= $(HOME)/Documents/Coding/raylib/build/
 LIB_DIRS = -L$(RAYLIB_DIR)lib
 INCLUDE_DIRS = -I$(RAYLIB_DIR)include -I.
 LIBS = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
