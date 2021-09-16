@@ -12,7 +12,8 @@ Body* init_body(int N, float link_length, float root_x, float root_y){
     body->link_length = link_length;
     body->links_lengths = (float *)calloc(N - 1, sizeof(float));
     body->total_length = link_length * (N - 1);
-    body->current_length = link_length * (N - 1);
+    body->current_length = body->total_length;
+    body->target_length = link_length * (N - 1);
     body->target = (Vector2){root_x, body->total_length};
     body->final_target = (Vector2){root_x, body->total_length};
     body->angle_limit = PI;
@@ -44,8 +45,12 @@ void set_body_target(Body* body, Vector2 new_target){
     body->final_target = new_target;
 }
 
-void set_current_length(Body* body, float new_length){
-    body->current_length = Clamp(new_length, 0, body->total_length);
+void set_length_target(Body* body, float new_length){
+    body->target_length = Clamp(new_length, 0, body->total_length);
+}
+
+void _update_body_length(Body* body){
+    body->current_length = Lerp(body->current_length, body->target_length, 0.2);
     body->N = (int)(body->current_length / body->link_length);
 
     for (int i=0; i< body->N; ++i)
@@ -91,6 +96,7 @@ Vector2 _limit_new_pos(Vector2 a, Vector2 b, Vector2 c, float length, float angl
 }
 
 void update_body(Body *body){
+    _update_body_length(body);
     body->target = Vector2Lerp(body->target, body->final_target, 0.2);
 
     // Check distance

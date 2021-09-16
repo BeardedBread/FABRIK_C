@@ -14,6 +14,7 @@ typedef struct _Body {
     float link_length;
     float* links_lengths;
     float current_length;
+    float target_length;
     Joint* joints;
 } Body;
 
@@ -21,7 +22,8 @@ typedef struct _Body {
 Body* init_body(int N, float link_length, float root_x, float root_y);
 void set_body_root(Body* body, Vector2 new_pos);
 void set_body_target(Body* body, Vector2 new_target);
-void set_current_length(Body* body, float new_length);
+void set_length_target(Body* body, float new_length);
+void _update_body_length(Body* body);
 void update_body(Body* body);
 void draw_body(Body* body);
 void free_body(Body* body);

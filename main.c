@@ -6,16 +6,16 @@ int main(int argc, char** argv) {
     const unsigned int scrnHeight = 600;
 
     InitWindow(scrnWidth, scrnHeight, "FABRIK");
-    SetTargetFPS(30);
+    SetTargetFPS(60);
 
     Body* body = init_body(15, 20, 400, 500);
     bool follow_mode = false;
 
     while(!WindowShouldClose()){
         if (IsKeyReleased(KEY_O))
-            set_current_length(body, body->current_length - 10);
+            set_length_target(body, body->current_length - 30);
         if (IsKeyReleased(KEY_P))
-            set_current_length(body, body->current_length + 10);
+            set_length_target(body, body->current_length + 30);
         if (IsKeyReleased(KEY_F))
             follow_mode = !follow_mode;
 
